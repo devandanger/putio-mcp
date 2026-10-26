@@ -27,6 +27,7 @@ from .service import PutioService
 log = logging.getLogger("putio_mcp")
 
 TOKEN_ENV = "PUTIO_TOKEN"
+IGNORE_PROXY_ENV = "PUTIO_MCP_IGNORE_PROXY"
 
 INSTRUCTIONS = """Tools for a single put.io account: list and add download transfers, and
 browse / organise files and folders. IDs are put.io integer IDs; folder id 0 is the
@@ -55,7 +56,8 @@ def service_from_env() -> PutioService:
             CONFIG,
             f"{TOKEN_ENV} is not set. Add it to the server's env in claude_desktop_config.json.",
         )
-    return PutioService(PutioClient(token))
+    ignore_proxy = os.environ.get(IGNORE_PROXY_ENV, "").strip().lower() in ("1", "true", "yes")
+    return PutioService(PutioClient(token, ignore_proxy=ignore_proxy))
 
 
 def create_server(service_factory: Callable[[], PutioService] = service_from_env) -> FastMCP:

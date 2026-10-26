@@ -153,3 +153,18 @@ def test_apierror_from_putiopy_directly_translates():
     with pytest.raises(PutioError) as e:
         client.rename(5, "x")
     assert e.value.kind == NOT_FOUND
+
+
+def test_ignore_proxy_disables_environment_proxies():
+    assert PutioClient(TOKEN)._client.session.trust_env is True
+    assert PutioClient(TOKEN, ignore_proxy=True)._client.session.trust_env is False
+
+
+def test_service_from_env_honours_ignore_proxy(monkeypatch):
+    from putio_mcp.server import service_from_env
+
+    monkeypatch.setenv("PUTIO_TOKEN", TOKEN)
+    monkeypatch.delenv("PUTIO_MCP_IGNORE_PROXY", raising=False)
+    assert service_from_env().api._client.session.trust_env is True
+    monkeypatch.setenv("PUTIO_MCP_IGNORE_PROXY", "1")
+    assert service_from_env().api._client.session.trust_env is False

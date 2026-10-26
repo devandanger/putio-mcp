@@ -127,6 +127,10 @@ when put.io provides one.
 **`name_conflict`.** An item with that name (ignoring case) already exists in the target
 folder. Rename or pick another destination.
 
+**`network_error: could not reach put.io: ProxyError`.** The server honours system and
+`HTTPS_PROXY` proxy settings. If a configured proxy is down, add
+`"PUTIO_MCP_IGNORE_PROXY": "1"` to the `env` block to connect directly.
+
 **Verbose logs.** Set `"PUTIO_MCP_LOG_LEVEL": "DEBUG"` in the `env` block. Logs go to
 stderr (which Claude Desktop captures to the log file above), never to stdout.
 

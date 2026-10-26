@@ -74,13 +74,16 @@ class PutioApi(Protocol):
 class PutioClient:
     """Real implementation of PutioApi backed by putiopy."""
 
-    def __init__(self, token: str, timeout: int = 30) -> None:
+    def __init__(self, token: str, timeout: int = 30, ignore_proxy: bool = False) -> None:
         if not token or not token.strip():
             raise PutioError(AUTH, "PUTIO_TOKEN is empty.")
         self._token = token.strip()
         # putiopy's request() always uses self.timeout; its default of 5s is too
         # aggressive for large folder listings.
         self._client = putiopy.Client(self._token, timeout=timeout)
+        if ignore_proxy:
+            # Do not pick up HTTP(S)_PROXY variables or macOS system proxy settings.
+            self._client.session.trust_env = False
 
     # -- low level -----------------------------------------------------------
 
