@@ -121,3 +121,44 @@ async def test_tool_errors_never_contain_token(fake, monkeypatch):
         res = await client.call_tool("list_transfers", {})
         assert res.isError
         assert token not in _text(res) and "[REDACTED]" in _text(res)
+
+
+async def test_token_loaded_from_env_file(fake, monkeypatch, tmp_path):
+    env_file = tmp_path / "custom.env"
+    env_file.write_text("# comment\nPUTIO_TOKEN='FROMDOTENVFILE123'\nPUTIO_MCP_IGNORE_PROXY=1\n")
+    monkeypatch.delenv("PUTIO_TOKEN", raising=False)
+    monkeypatch.delenv("PUTIO_MCP_IGNORE_PROXY", raising=False)
+    monkeypatch.setenv("PUTIO_MCP_ENV_FILE", str(env_file))
+    monkeypatch.chdir(tmp_path)  # no ./.env here; must fall through to the explicit file
+
+    from putio_mcp.server import load_env_file, service_from_env
+
+    assert load_env_file() == env_file
+    svc = service_from_env()
+    assert svc.api._token == "FROMDOTENVFILE123"
+    assert svc.api._client.session.trust_env is False
+
+
+async def test_real_environment_wins_over_env_file(monkeypatch, tmp_path):
+    (tmp_path / ".env").write_text("PUTIO_TOKEN=FROMFILE\n")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("PUTIO_MCP_ENV_FILE", raising=False)
+    monkeypatch.setenv("PUTIO_TOKEN", "FROMENV00000")
+
+    from putio_mcp.server import load_env_file, service_from_env
+
+    assert load_env_file() == tmp_path / ".env"
+    assert service_from_env().api._token == "FROMENV00000"
+
+
+async def test_missing_env_file_still_reports_config_error(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("PUTIO_TOKEN", raising=False)
+    monkeypatch.setenv("PUTIO_MCP_ENV_FILE", str(tmp_path / "nope.env"))
+    import putio_mcp.server as srv
+
+    monkeypatch.setattr(srv, "REPO_ROOT", tmp_path)
+    server = create_server()
+    async with create_connected_server_and_client_session(server._mcp_server) as client:
+        res = await client.call_tool("list_transfers", {})
+        assert res.isError and CONFIG in _text(res) and ".env" in _text(res)

@@ -8,6 +8,7 @@ requires-python = ">=3.12"
 dependencies = [
     "mcp>=1.6.0,<2",
     "putio-py>=8.8.0",
+    "python-dotenv>=1.0",
 ]
 
 [project.scripts]

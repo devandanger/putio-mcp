@@ -15,8 +15,10 @@ import functools
 import logging
 import os
 import sys
+from pathlib import Path
 from typing import Any, Callable
 
+from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
 
@@ -28,6 +30,8 @@ log = logging.getLogger("putio_mcp")
 
 TOKEN_ENV = "PUTIO_TOKEN"
 IGNORE_PROXY_ENV = "PUTIO_MCP_IGNORE_PROXY"
+ENV_FILE_ENV = "PUTIO_MCP_ENV_FILE"
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 INSTRUCTIONS = """Tools for a single put.io account: list and add download transfers, and
 browse / organise files and folders. IDs are put.io integer IDs; folder id 0 is the
@@ -35,6 +39,28 @@ root ("Your Files"). Paginated tools return next_cursor when more results exist;
 back as cursor to continue. Organisation tools (create_folder, rename_file, move_files)
 accept dry_run=true to validate without changing the account. Deletion is intentionally
 not available."""
+
+
+def load_env_file() -> Path | None:
+    """Load the first .env file found. Existing environment variables always win.
+
+    Search order: $PUTIO_MCP_ENV_FILE, ./.env, <repo root>/.env. Returns the path
+    that was loaded, or None. The file is gitignored; it is the recommended place
+    for PUTIO_TOKEN so the token never has to live in claude_desktop_config.json.
+    """
+    candidates: list[Path] = []
+    explicit = os.environ.get(ENV_FILE_ENV, "").strip()
+    if explicit:
+        candidates.append(Path(explicit).expanduser())
+    candidates.append(Path.cwd() / ".env")
+    candidates.append(REPO_ROOT / ".env")
+    for path in candidates:
+        if path.is_file():
+            load_dotenv(path, override=False)
+            return path
+    if explicit:
+        log.warning("%s points to %s but no such file exists", ENV_FILE_ENV, explicit)
+    return None
 
 
 def configure_logging() -> None:
@@ -52,9 +78,13 @@ def configure_logging() -> None:
 def service_from_env() -> PutioService:
     token = os.environ.get(TOKEN_ENV, "")
     if not token.strip():
+        load_env_file()
+        token = os.environ.get(TOKEN_ENV, "")
+    if not token.strip():
         raise PutioError(
             CONFIG,
-            f"{TOKEN_ENV} is not set. Add it to the server's env in claude_desktop_config.json.",
+            f"{TOKEN_ENV} is not set. Put PUTIO_TOKEN=... in {REPO_ROOT / '.env'} "
+            "or in the server's env in claude_desktop_config.json.",
         )
     ignore_proxy = os.environ.get(IGNORE_PROXY_ENV, "").strip().lower() in ("1", "true", "yes")
     return PutioService(PutioClient(token, ignore_proxy=ignore_proxy))
@@ -180,6 +210,9 @@ def create_server(service_factory: Callable[[], PutioService] = service_from_env
 
 def main() -> None:
     configure_logging()
+    loaded = load_env_file()
+    if loaded:
+        log.info("loaded environment from %s", loaded)
     if not os.environ.get(TOKEN_ENV, "").strip():
         log.warning("%s is not set; tools will fail until it is configured.", TOKEN_ENV)
     log.info("starting putio-mcp over stdio")

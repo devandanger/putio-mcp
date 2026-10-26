@@ -42,13 +42,21 @@ Deletion is deliberately not exposed in this version.
 git clone git@github.com:devandanger/putio-mcp.git
 cd putio-mcp
 uv sync
+cp .env.example .env
 ```
 
-Run it once by hand to confirm it starts (it waits for an MCP client on stdin; press
-Ctrl-C to stop):
+Open `.env` and paste your put.io token after `PUTIO_TOKEN=`. The file is gitignored, so
+the token stays on this machine and out of `claude_desktop_config.json`.
+
+To get a token: sign in at https://app.put.io/oauth, click **Create App**, give it any
+unique name, then click the **key icon** next to the app and copy the token from the
+Secrets page. You need the OAuth token, not the client ID or client secret.
+
+Run the server once by hand to confirm it starts (it waits for an MCP client on stdin;
+press Ctrl-C to stop):
 
 ```sh
-PUTIO_TOKEN=your-token uv run putio-mcp
+uv run putio-mcp
 ```
 
 ## Claude Desktop configuration
@@ -58,8 +66,22 @@ Open the config file (Claude Desktop: Settings, Developer, Edit Config), or edit
 - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
-Add a server entry. Replace the directory with where you cloned the repo and the token
-placeholder with your real token.
+Add a server entry, replacing the directory with where you cloned the repo. With the token
+in `.env`, no `env` block is needed:
+
+```json
+{
+  "mcpServers": {
+    "putio": {
+      "command": "uv",
+      "args": ["--directory", "/absolute/path/to/putio-mcp", "run", "putio-mcp"]
+    }
+  }
+}
+```
+
+If you prefer not to use `.env`, pass the token in the config instead. A real environment
+variable always takes precedence over `.env`:
 
 ```json
 {
@@ -75,14 +97,17 @@ placeholder with your real token.
 }
 ```
 
+The server looks for `.env` at `$PUTIO_MCP_ENV_FILE`, then the current directory, then the
+repo root.
+
 If Claude Desktop cannot find `uv`, use its absolute path (`which uv`, typically
 `~/.local/bin/uv` or `/opt/homebrew/bin/uv`) as `command`.
 
 Restart Claude Desktop. The put.io tools appear under the tools menu in a new chat.
 
-The token lives only in that config file and the server's environment. It is never
-written to Git, returned in a tool response, or logged; error messages that could echo it
-are redacted.
+The token lives only in `.env` (or the config file) and the server's environment. It is
+never written to Git, returned in a tool response, or logged; error messages that could
+echo it are redacted.
 
 ## Example requests
 
@@ -115,8 +140,9 @@ Transfers:
 `--directory` path, `uv` not on Claude Desktop's PATH (use an absolute `command`), or
 invalid JSON in the config file.
 
-**`configuration_error: PUTIO_TOKEN is not set`.** The `env` block is missing or
-misspelled in the config entry. Restart Claude Desktop after fixing it.
+**`configuration_error: PUTIO_TOKEN is not set`.** There is no `.env` in the repo root with
+`PUTIO_TOKEN=...`, and no `env` block in the config entry. Create one and restart Claude
+Desktop.
 
 **`authentication_error`.** The token is invalid, revoked, or expired. Create a new one in
 put.io and update the config.
@@ -155,7 +181,7 @@ A live smoke test exercises every tool against your real account inside a tempor
 that it creates and then deletes:
 
 ```sh
-PUTIO_TOKEN=your-token uv run python scripts/live_smoke.py
+uv run python scripts/live_smoke.py          # reads PUTIO_TOKEN from .env
 # add --keep to leave the folder for inspection,
 # or --transfer-url <http-or-magnet-url> to also test add_transfer with a destination
 ```

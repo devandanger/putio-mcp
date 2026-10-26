@@ -484,6 +484,7 @@ source = { editable = "." }
 dependencies = [
     { name = "mcp" },
     { name = "putio-py" },
+    { name = "python-dotenv" },
 ]
 
 [package.dev-dependencies]
@@ -496,6 +497,7 @@ dev = [
 requires-dist = [
     { name = "mcp", specifier = ">=1.6.0,<2" },
     { name = "putio-py", specifier = ">=8.8.0" },
+    { name = "python-dotenv", specifier = ">=1.0" },
 ]
 
 [package.metadata.requires-dev]

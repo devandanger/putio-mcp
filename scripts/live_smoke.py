@@ -5,7 +5,7 @@ tool inside it, and (by default) deletes that folder afterwards. Nothing outside
 temporary folder is touched.
 
 Usage:
-    PUTIO_TOKEN=... uv run python scripts/live_smoke.py [--keep] [--transfer-url URL]
+    uv run python scripts/live_smoke.py [--keep] [--transfer-url URL]   # token from env or .env
 
 --keep           leave the temporary folder in place for manual inspection
 --transfer-url   also add a real transfer (an http(s)/magnet URL) into the temp
@@ -181,9 +181,12 @@ def main() -> int:
     ap.add_argument("--transfer-url")
     args = ap.parse_args()
 
+    from putio_mcp.server import load_env_file
+
+    load_env_file()
     token = os.environ.get("PUTIO_TOKEN", "").strip()
     if not token:
-        print("PUTIO_TOKEN is not set; refusing to run.", file=sys.stderr)
+        print("PUTIO_TOKEN is not set (environment or .env); refusing to run.", file=sys.stderr)
         return 2
 
     smoke = Smoke(token)
