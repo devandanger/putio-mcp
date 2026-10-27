@@ -8,6 +8,58 @@ files. It is a fork of put.io's official
 
 It runs locally over stdio. There is no hosted service, and nothing is published to PyPI.
 
+## Quick start
+
+Five steps from zero to using it in Claude Desktop. Each is explained in more detail below.
+
+1. **Install [uv](https://docs.astral.sh/uv/getting-started/installation/)** if you do not
+   have it (`curl -LsSf https://astral.sh/uv/install.sh | sh`), then clone and sync:
+
+   ```sh
+   git clone git@github.com:devandanger/putio-mcp.git
+   cd putio-mcp
+   uv sync
+   ```
+
+2. **Get a put.io token.** Sign in at https://app.put.io/oauth, click **Create App**, give
+   it any unique name, then click the **key icon** next to the app and copy the token from
+   the Secrets page. Use the OAuth token, not the client ID or client secret.
+
+3. **Store the token.** Copy the example file and paste the token after `PUTIO_TOKEN=`:
+
+   ```sh
+   cp .env.example .env
+   ```
+
+   `.env` is gitignored, so the token never leaves this machine.
+
+4. **Check it works** against your account. This creates a temporary folder, exercises
+   every tool inside it, and deletes the folder again:
+
+   ```sh
+   uv run python scripts/live_smoke.py
+   ```
+
+   You should see `OK: 0 failing step(s)`.
+
+5. **Register it with Claude Desktop.** Add this to
+   `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS), using the
+   output of `which uv` as the command and your clone's path in `--directory`:
+
+   ```json
+   {
+     "mcpServers": {
+       "putio": {
+         "command": "/Users/you/.local/bin/uv",
+         "args": ["--directory", "/absolute/path/to/putio-mcp", "run", "putio-mcp"]
+       }
+     }
+   }
+   ```
+
+   Quit and reopen Claude Desktop. In a new chat, ask "What's in my put.io root folder?"
+   to confirm the tools are live.
+
 ## Tools
 
 | Tool | What it does |
